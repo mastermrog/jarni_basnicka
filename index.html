@@ -1,727 +1,250 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { 
-  Trophy, Timer, Play, RefreshCw, CheckCircle2, 
-  Star, Flower2, Bird, Sun, Home, Move, 
-  Settings, ArrowLeft, MousePointer2, Sparkles,
-  Volume2, Check, XCircle, ArrowRight, Headphones, Loader2, AlertCircle
-} from 'lucide-react';
-
-const POEM = [
-  {
-    id: 1,
-    lines: [
-      "Vytáhnout trávu z hlíny",
-      "a na zeleno natřít.",
-      "Načernit pěkně stíny",
-      "a všechno živé sbratřit."
-    ]
-  },
-  {
-    id: 2,
-    lines: [
-      "Všem hadům svléci kůži,",
-      "načesat řádně louky,",
-      "spočítat lístky růží",
-      "a pruty leštit, brouky."
-    ]
-  },
-  {
-    id: 3,
-    lines: [
-      "Nachystat noty ptáčkům,",
-      "obléci nahé stromy,",
-      "vysmát se poškoláčkům,",
-      "pozlatit střechy, domy."
-    ]
-  },
-  {
-    id: 4,
-    lines: [
-      "Rozmíchat v lese barvy",
-      "a kdeco zrána zrosit,",
-      "probudit v zemi larvy",
-      "a teplo do děr nosit."
-    ]
-  },
-  {
-    id: 5,
-    lines: [
-      "Včeličkám květy sladit",
-      "a děcka nutit vstávat",
-      "a kožich kočkám hladit",
-      "a peckám jádra dávat."
-    ]
-  }
-];
-
-const FILLING_VARIANTS = [
-  // Sloka 1
-  [
-    { text: "Vytáhnout _____ z hlíny", answer: "trávu", options: ["trávu", "kytku", "žížalu"] },
-    { text: "Vytáhnout trávu z _____", answer: "hlíny", options: ["vody", "hlíny", "písku"] }
-  ],
-  [
-    { text: "a na _____ natřít.", answer: "zeleno", options: ["modro", "zeleno", "žluto"] },
-    { text: "a na zeleno _____.", answer: "natřít", options: ["natřít", "posypat", "umyć"] }
-  ],
-  [
-    { text: "Načernit pěkně _____", answer: "stíny", options: ["stíny", "mraky", "stromy"] },
-    { text: "_____ pěkně stíny", answer: "Načernit", options: ["Načernit", "Vybělit", "Schovat"] }
-  ],
-  [
-    { text: "a všechno živé _____.", answer: "sbratřit", options: ["sbratřit", "vystrašit", "nakrmit"] },
-    { text: "a všechno _____ sbratřit.", answer: "živé", options: ["jarní", "živé", "lesní"] }
-  ],
-  // Sloka 2
-  [
-    { text: "Všem _____ svléci kůži,", answer: "hadům", options: ["hadům", "mlokům", "žábám"] },
-    { text: "Všem hadům svléci _____,", answer: "kůži", options: ["kůži", "kožich", "šaty"] }
-  ],
-  [
-    { text: "načesat řádně _____,", answer: "louky", options: ["vlasy", "louky", "pole"] },
-    { text: "_____ řádně louky,", answer: "načesat", options: ["pokosit", "načesat", "zalít"] }
-  ],
-  [
-    { text: "spočítat _____ růží", answer: "lístky", options: ["trny", "květy", "lístky"] },
-    { text: "spočítat lístky _____", answer: "růží", options: ["růží", "sedmikrásek", "pampelišek"] }
-  ],
-  [
-    { text: "a _____ leštit, brouky.", answer: "pruty", options: ["pruty", "boty", "zrcadla"] },
-    { text: "a pruty leštit, _____.", answer: "brouky", options: ["kluky", "brouky", "mravence"] }
-  ],
-  // Sloka 3
-  [
-    { text: "Nachystat _____ ptáčkům,", answer: "noty", options: ["zrnní", "noty", "hnízda"] },
-    { text: "Nachystat noty _____,", answer: "ptáčkům", options: ["ptáčkům", "včelkám", "dětem"] }
-  ],
-  [
-    { text: "obléci _____ stromy,", answer: "nahé", options: ["staré", "nahé", "smutné"] },
-    { text: "obléci nahé _____,", answer: "stromy", options: ["stromy", "keře", "květy"] }
-  ],
-  [
-    { text: "vysmát se _____,", answer: "poškoláčkům", options: ["loudalům", "poškoláčkům", "pěnkavám"] },
-    { text: "_____ se poškoláčkům,", answer: "vysmát", options: ["vysmát", "vyhnout", "poklonit"] }
-  ],
-  [
-    { text: "pozlatit _____, domy.", answer: "střechy", options: ["okna", "ploty", "střechy"] },
-    { text: "pozlatit střechy, _____.", answer: "domy", options: ["domy", "dvory", "hrady"] }
-  ],
-  // Sloka 4
-  [
-    { text: "Rozmíchat v _____ barvy", answer: "lese", options: ["blátě", "lese", "poli"] },
-    { text: "Rozmíchat v lese _____", answer: "barvy", options: ["barvy", "listy", "větve"] }
-  ],
-  [
-    { text: "a kdeco zrána _____.", answer: "zrosit", options: ["zrosit", "usušit", "spálit"] },
-    { text: "a kdeco _____ zrosit,", answer: "zrána", options: ["zrána", "v noci", "v lese"] }
-  ],
-  [
-    { text: "probudit v zemi _____", answer: "larvy", options: ["krtky", "larvy", "myšky"] },
-    { text: "probudit v _____ larvy", answer: "zemi", options: ["trávě", "zemi", "hlíně"] }
-  ],
-  [
-    { text: "a _____ do děr nosit.", answer: "teplo", options: ["vodu", "teplo", "světlo"] },
-    { text: "a teplo do _____ nosit.", answer: "děr", options: ["děr", "budek", "hnízd"] }
-  ],
-  // Sloka 5
-  [
-    { text: "Včeličkám květy _____", answer: "sladit", options: ["zalít", "sladit", "trhat"] },
-    { text: "_____ květy sladit", answer: "Včeličkám", options: ["Včeličkám", "Motýlům", "Dětem"] }
-  ],
-  [
-    { text: "a děcka nutit _____", answer: "vstávat", options: ["vstávat", "zpívat", "běhat"] },
-    { text: "a _____ nutit vstávat", answer: "děcka", options: ["včelky", "děcka", "kočky"] }
-  ],
-  [
-    { text: "a kožich _____ hladit", answer: "kočkám", options: ["psům", "kočkám", "králíkům"] },
-    { text: "a _____ kočkám hladit", answer: "kožich", options: ["kožich", "ocásek", "uši"] }
-  ],
-  [
-    { text: "a peckám _____ dávat.", answer: "jádra", options: ["vodu", "jádra", "chuť"] },
-    { text: "a _____ jádra dávat.", answer: "peckám", options: ["peckám", "květům", "stromům"] }
-  ]
-];
-
-function shuffleArray(array) {
-  const newArr = [...array];
-  for (let i = newArr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
-  }
-  return newArr;
-}
-
-const App = () => {
-  const [gameState, setGameState] = useState('menu'); 
-  const [selectedGameType, setSelectedGameType] = useState(null);
-  const [stanzaCount, setStanzaCount] = useState(5);
-  const [score, setScore] = useState(0);
-  const [errorCount, setErrorCount] = useState(0);
-  const [time, setTime] = useState(0);
-  const [timerActive, setTimerActive] = useState(false);
-  const [currentStanza, setCurrentStanza] = useState(0);
-  const [shuffledLines, setShuffledLines] = useState([]);
-  const [userOrderedLines, setUserOrderedLines] = useState([]);
-  const [fillingIndex, setFillingIndex] = useState(0);
-  const [activeFillingData, setActiveFillingData] = useState([]);
-  const [feedback, setFeedback] = useState(null); 
-
-  // Drag and Drop
-  const [draggedItem, setDraggedItem] = useState(null);
-  const [dropSlots, setDropSlots] = useState([]);
-  const [showDragResults, setShowDragResults] = useState(false);
-
-  // Listening (Built-in Web Speech API)
-  const [isSpeaking, setIsSpeaking] = useState(false);
-
-  const activePoem = useMemo(() => POEM.slice(0, stanzaCount), [stanzaCount]);
-
-  useEffect(() => {
-    let interval;
-    if (timerActive) {
-      interval = setInterval(() => setTime(t => t + 1), 1000);
-    }
-    return () => clearInterval(interval);
-  }, [timerActive]);
-
-  const goHome = () => {
-    setGameState('menu');
-    setTimerActive(false);
-    setScore(0);
-    setErrorCount(0);
-    setTime(0);
-    setFeedback(null);
-    stopSpeaking();
-  };
-
-  const restartCurrentGame = () => {
-    setFeedback(null);
-    startGame();
-  };
-
-  const startSetup = (type) => {
-    setSelectedGameType(type);
-    setGameState('setup');
-    setFeedback(null);
-  };
-
-  const startGame = () => {
-    setScore(0);
-    setErrorCount(0);
-    setTime(0);
-    setTimerActive(true);
-    setCurrentStanza(0);
-    setFeedback(null);
-    
-    if (selectedGameType === 'sorting') {
-      setGameState('sorting');
-      prepareSortingStanza(0);
-    } else if (selectedGameType === 'filling') {
-      setGameState('filling');
-      setFillingIndex(0);
-      const linesCount = stanzaCount * 4;
-      const selectedTasks = FILLING_VARIANTS.slice(0, linesCount).map(variants => {
-        return variants[Math.floor(Math.random() * 2)];
-      });
-      setActiveFillingData(selectedTasks);
-    } else if (selectedGameType === 'dragdrop') {
-      setGameState('dragdrop');
-      setShowDragResults(false);
-      prepareDragDropAll();
-    } else if (selectedGameType === 'listening') {
-      setGameState('listening');
-      setCurrentStanza(0);
-    }
-  };
-
-  const prepareSortingStanza = (index) => {
-    const lines = [...activePoem[index].lines];
-    const shuffled = shuffleArray(lines);
-    setShuffledLines(shuffled);
-    setUserOrderedLines([]);
-  };
-
-  const prepareDragDropAll = () => {
-    const allLines = activePoem.flatMap(s => s.lines);
-    const shuffled = shuffleArray(allLines);
-    setShuffledLines(shuffled);
-    setDropSlots(new Array(allLines.length).fill(null));
-  };
-
-  const handleLineClick = (line) => {
-    if (userOrderedLines.includes(line)) return;
-    const newOrder = [...userOrderedLines, line];
-    setUserOrderedLines(newOrder);
-
-    if (newOrder.length === 4) {
-      const isCorrect = newOrder.every((l, i) => l === activePoem[currentStanza].lines[i]);
-      const isLast = currentStanza === activePoem.length - 1;
-
-      if (isCorrect) {
-        setScore(s => s + 20);
-        if (isLast) {
-          setFeedback({ type: 'success', text: 'Paráda! Jsi šikula.', isLast: true, action: finishGame });
-        } else {
-          setFeedback({ type: 'success', text: 'Skvěle!' });
-          setTimeout(() => {
-            const next = currentStanza + 1;
-            setCurrentStanza(next);
-            prepareSortingStanza(next);
-            setFeedback(null);
-          }, 1200);
-        }
-      } else {
-        setErrorCount(e => e + 1);
-        setFeedback({ type: 'error', text: 'Zkus to znovu!' });
-        setTimeout(() => {
-          setUserOrderedLines([]);
-          setFeedback(null);
-        }, 1200);
-      }
-    }
-  };
-
-  const handleFillingAnswer = (option) => {
-    const correct = activeFillingData[fillingIndex].answer;
-    const isLast = fillingIndex === activeFillingData.length - 1;
-
-    if (option === correct) {
-      setScore(s => s + 10);
-      if (isLast) {
-        setFeedback({ type: 'success', text: 'Výborně, máš to celé!', isLast: true, action: finishGame });
-      } else {
-        setFeedback({ type: 'success', text: 'Trefa!' });
-        setTimeout(() => {
-          setFillingIndex(f => f + 1);
-          setFeedback(null);
-        }, 1000);
-      }
-    } else {
-      setErrorCount(e => e + 1);
-      setFeedback({ type: 'error', text: 'Zkus to znovu.' });
-      setTimeout(() => setFeedback(null), 1000);
-    }
-  };
-
-  const onDragStart = (line, fromSlotIndex = null) => {
-    setDraggedItem({ line, fromSlotIndex });
-    setShowDragResults(false); 
-  };
-
-  const onDropToSlot = (slotIndex) => {
-    if (!draggedItem) return;
-    const newSlots = [...dropSlots];
-    if (draggedItem.fromSlotIndex !== null) {
-      newSlots[draggedItem.fromSlotIndex] = null;
-    }
-    newSlots[slotIndex] = draggedItem.line;
-    setDropSlots(newSlots);
-    setDraggedItem(null);
-    setShowDragResults(false);
-  };
-
-  const removeFromSlot = (slotIndex) => {
-    const newSlots = [...dropSlots];
-    newSlots[slotIndex] = null;
-    setDropSlots(newSlots);
-    setShowDragResults(false);
-  };
-
-  const checkDragDropResults = () => {
-    const allCorrectLines = activePoem.flatMap(s => s.lines);
-    const isCorrect = dropSlots.every((l, i) => l === allCorrectLines[i]);
-    
-    if (isCorrect) {
-      setScore(s => s + (stanzaCount * 25));
-      setFeedback({ type: 'success', text: 'Neuvěřitelné! Celou básničku jsi složil!', isLast: true, action: finishGame });
-    } else {
-      setErrorCount(e => e + 1);
-      setShowDragResults(true);
-      setFeedback({ type: 'error', text: 'Některé řádky jsou špatně.' });
-      setTimeout(() => setFeedback(null), 1500);
-    }
-  };
-
-  // WEB SPEECH API (BEZ API KLÍČE)
-  const playStanza = (stanzaLines) => {
-    if (!window.speechSynthesis) return;
-    
-    stopSpeaking();
-    const text = stanzaLines.join(". ");
-    const utterance = new SpeechSynthesisUtterance(text);
-    
-    utterance.lang = 'cs-CZ';
-    utterance.rate = 0.8;
-    utterance.pitch = 1.1;
-
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-
-    window.speechSynthesis.speak(utterance);
-  };
-
-  const stopSpeaking = () => {
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-    }
-  };
-
-  const finishGame = () => {
-    setTimerActive(false);
-    setFeedback(null);
-    setGameState('result');
-  };
-
-  const formatTime = (seconds) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
-
-  const getStarRating = () => {
-    if (errorCount === 0) return 3;
-    if (errorCount <= stanzaCount) return 2;
-    return 1;
-  };
-
-  const BackButton = () => (
-    <button 
-      onClick={goHome}
-      className="absolute top-4 left-4 z-20 flex items-center gap-2 px-4 py-2 bg-white/90 hover:bg-white text-slate-600 rounded-2xl font-black shadow-md border-b-4 border-slate-200 transition-all active:translate-y-1 active:border-b-0"
-    >
-      <ArrowLeft size={20} /> <span className="hidden sm:inline">MENU</span>
-    </button>
-  );
-
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-100 to-emerald-50 font-sans text-slate-800 p-4 md:p-8 flex flex-col items-center overflow-x-hidden">
-      {/* Header */}
-      <div className="max-w-3xl w-full flex justify-between items-center bg-white/80 backdrop-blur-md p-4 rounded-3xl shadow-lg mb-6 border-b-4 border-white z-10">
-        <button onClick={goHome} className="flex items-center gap-2 text-emerald-600 hover:text-emerald-800 font-black p-2 bg-emerald-50 rounded-2xl border-b-4 border-emerald-200">
-          <Home size={24} />
-          <span className="hidden sm:inline uppercase text-sm">Menu</span>
-        </button>
-        <div className="flex gap-4">
-          <div className="flex items-center gap-2 bg-yellow-400 px-5 py-2 rounded-2xl text-white font-black shadow-md border-b-4 border-yellow-600">
-            <Trophy size={20} />
-            <span className="text-xl">{score}</span>
-          </div>
-          <div className="flex items-center gap-2 bg-sky-400 px-5 py-2 rounded-2xl text-white font-black shadow-md border-b-4 border-sky-600">
-            <Timer size={20} />
-            <span className="text-xl">{formatTime(time)}</span>
-          </div>
-        </div>
-      </div>
-
-      <main className="max-w-5xl w-full bg-white rounded-[3rem] shadow-2xl p-6 md:p-12 min-h-[600px] flex flex-col items-center justify-center relative overflow-hidden border-t-8 border-white">
-        <div className="absolute -top-10 -left-10 text-pink-100 animate-pulse pointer-events-none"><Flower2 size={120} /></div>
-        <div className="absolute top-20 -right-10 text-yellow-100 animate-bounce pointer-events-none"><Sun size={100} /></div>
-        
-        {gameState !== 'menu' && gameState !== 'result' && <BackButton />}
-
-        {gameState === 'menu' && (
-          <div className="text-center space-y-10 animate-in fade-in zoom-in duration-500 z-10 w-full">
-            <div className="space-y-4">
-              <div className="inline-block bg-yellow-400 text-white px-6 py-2 rounded-full font-black uppercase tracking-widest text-sm mb-2 shadow-lg">Jarní škola</div>
-              <h2 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 via-sky-500 to-indigo-500 drop-shadow-md tracking-tight">Učím se básničku</h2>
-              <p className="text-slate-400 font-bold italic text-2xl">František Halas: Co všechno musí udělat jaro</p>
-            </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
-              {[
-                { id: 'sorting', label: 'Sestav sloky', color: 'bg-emerald-500', icon: RefreshCw },
-                { id: 'dragdrop', label: 'Přetahování', color: 'bg-pink-500', icon: Move },
-                { id: 'filling', label: 'Doplňovačka', color: 'bg-sky-500', icon: Play },
-                { id: 'listening', label: 'Poslech', color: 'bg-indigo-500', icon: Headphones }
-              ].map(game => (
-                <button key={game.id} onClick={() => startSetup(game.id)} className={`flex flex-col items-center gap-4 p-6 ${game.color} text-white rounded-[2.5rem] transition-all hover:scale-105 shadow-xl group border-b-8 border-black/20`}>
-                  <div className="bg-white/20 p-5 rounded-3xl group-hover:rotate-12 transition-transform"><game.icon size={48} /></div>
-                  <span className="font-black text-xl leading-tight uppercase">{game.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {gameState === 'setup' && (
-          <div className="text-center space-y-12 z-10 w-full max-w-lg">
-            <div className="bg-white p-8 rounded-[3rem] shadow-xl border-4 border-sky-100">
-                <Settings className="mx-auto text-sky-400 mb-6 animate-spin-slow" size={64} />
-                <h3 className="text-3xl font-black text-sky-800 mb-4">Kolik slok zvládneš?</h3>
-                <div className="flex justify-center gap-4 mb-8">
-                  {[1, 2, 3, 4, 5].map(num => (
-                    <button key={num} onClick={() => setStanzaCount(num)} className={`w-16 h-16 rounded-2xl font-black text-3xl transition-all shadow-lg border-b-4 ${stanzaCount === num ? 'bg-sky-500 text-white border-sky-700 scale-110' : 'bg-white text-sky-400 border-sky-100 hover:bg-sky-50'}`}>
-                      {num}
-                    </button>
-                  ))}
-                </div>
-                <button onClick={startGame} className="w-full py-6 bg-gradient-to-r from-emerald-500 to-sky-500 text-white rounded-3xl font-black text-3xl shadow-xl border-b-8 border-black/20 uppercase tracking-wide">Jdeme na to!</button>
-            </div>
-          </div>
-        )}
-
-        {gameState === 'sorting' && (
-          <div className="w-full space-y-8 z-10 mt-12">
-            <div className="flex flex-col items-center gap-3">
-              <span className="bg-emerald-500 text-white px-8 py-2 rounded-full text-sm font-black uppercase tracking-widest shadow-md">Sloka {currentStanza + 1} / {activePoem.length}</span>
-              <h3 className="text-3xl font-black text-slate-700">Seřaď verše básně</h3>
-            </div>
-            <div className="grid gap-6">
-              <div className="bg-emerald-50 p-8 rounded-[3rem] border-4 border-dashed border-emerald-200 min-h-[250px] space-y-3">
-                {userOrderedLines.map((line, i) => (
-                  <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border-2 border-emerald-100 flex items-center gap-4 animate-in slide-in-from-left-4">
-                    <span className="w-10 h-10 bg-emerald-500 text-white rounded-xl flex items-center justify-center font-black">{i + 1}</span>
-                    <span className="text-xl font-bold text-emerald-800">{line}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex flex-wrap gap-3 justify-center">
-                {shuffledLines.map((line, i) => (
-                  <button key={i} disabled={userOrderedLines.includes(line) || !!feedback} onClick={() => handleLineClick(line)} className={`px-6 py-4 rounded-2xl border-b-4 transition-all font-bold text-xl shadow-md ${userOrderedLines.includes(line) ? 'opacity-0 pointer-events-none' : 'bg-white border-emerald-200 hover:border-emerald-500 text-slate-700 active:translate-y-1 active:border-b-0'}`}>
-                    {line}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {gameState === 'dragdrop' && (
-          <div className="w-full space-y-8 z-10 mt-12">
-            <div className="text-center space-y-2"><h3 className="text-4xl font-black text-slate-600 uppercase tracking-tight">Slož celou básničku</h3></div>
-            <div className="grid md:grid-cols-5 gap-6">
-              <div className="md:col-span-2 space-y-2 max-h-[500px] overflow-y-auto p-4 custom-scrollbar bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200 shadow-inner">
-                <p className="text-center text-slate-400 font-bold text-[10px] uppercase mb-2 tracking-widest">Zásobník veršů</p>
-                {shuffledLines.map((line, i) => {
-                  const isInSlot = dropSlots.includes(line);
-                  return (
-                    <div 
-                      key={i} 
-                      draggable={!isInSlot} 
-                      onDragStart={() => onDragStart(line)} 
-                      className={`p-3 rounded-xl border-b-4 font-bold text-base transition-all ${isInSlot ? 'opacity-10 bg-slate-100 pointer-events-none border-transparent' : 'bg-white border-slate-200 hover:bg-slate-50 shadow-md text-slate-600 cursor-grab active:cursor-grabbing'}`}
-                    >
-                      {line}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="md:col-span-3 space-y-6 max-h-[500px] overflow-y-auto p-4 custom-scrollbar">
-                {Array.from({ length: stanzaCount }).map((_, stanzaIdx) => (
-                  <div key={stanzaIdx} className="p-5 bg-white rounded-[2.5rem] border-4 border-slate-50 shadow-sm relative group">
-                    <span className="absolute -top-3 left-6 bg-slate-100 text-slate-500 text-[10px] font-black uppercase px-3 py-1 rounded-full shadow-sm tracking-widest">Sloka {stanzaIdx + 1}</span>
-                    <div className="space-y-2">
-                      {[0, 1, 2, 3].map(offset => {
-                        const i = stanzaIdx * 4 + offset;
-                        const slot = dropSlots[i];
-                        const allCorrectLines = activePoem.flatMap(s => s.lines);
-                        const isCorrect = showDragResults && slot === allCorrectLines[i];
-                        const isWrong = showDragResults && slot !== null && slot !== allCorrectLines[i];
-
-                        return (
-                          <div 
-                            key={i} 
-                            onDragOver={(e) => e.preventDefault()} 
-                            onDrop={() => onDropToSlot(i)}
-                            onClick={() => slot && removeFromSlot(i)}
-                            draggable={!!slot}
-                            onDragStart={() => slot && onDragStart(slot, i)}
-                            className={`h-14 rounded-xl border-4 flex items-center px-4 transition-all cursor-pointer ${
-                              slot 
-                              ? (isCorrect ? 'bg-emerald-50 border-emerald-400' : isWrong ? 'bg-rose-50 border-rose-400 animate-shake' : 'bg-slate-50 border-slate-200 shadow-sm') 
-                              : 'bg-slate-50/30 border-dashed border-slate-100'
-                            }`}
-                          >
-                            {slot ? (
-                              <div className="flex items-center gap-3 w-full">
-                                {isCorrect && <Check size={18} className="text-emerald-500" />}
-                                {isWrong && <XCircle size={18} className="text-rose-500" />}
-                                <span className={`font-bold text-sm line-clamp-1 ${isCorrect ? 'text-emerald-800' : isWrong ? 'text-rose-800' : 'text-slate-600'}`}>
-                                  {slot}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-slate-200 font-black italic text-xs">{offset + 1}. řádek</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            {dropSlots.every(s => s !== null) && (
-              <button 
-                onClick={checkDragDropResults}
-                className="w-full py-5 bg-slate-600 hover:bg-slate-700 text-white rounded-[2rem] font-black text-2xl shadow-xl border-b-8 border-slate-800 transition-all hover:scale-105 active:translate-y-1 active:border-b-0 uppercase tracking-widest"
-              >
-                Zkontrolovat básničku
-              </button>
-            )}
-          </div>
-        )}
-
-        {gameState === 'filling' && (
-          <div className="w-full space-y-12 text-center z-10 mt-12">
-             <span className="bg-sky-500 text-white px-8 py-2 rounded-full text-sm font-black uppercase tracking-widest shadow-md">Úkol {fillingIndex + 1} / {activeFillingData.length}</span>
-              <div className="py-10 bg-sky-50 rounded-[3rem] border-4 border-white shadow-inner">
-                <p className="text-4xl md:text-5xl font-black text-slate-700 px-6 leading-relaxed min-h-[120px] flex items-center justify-center">
-                  {activeFillingData[fillingIndex]?.text.split('_____').map((part, i, arr) => (
-                    <React.Fragment key={i}>{part}{i < arr.length - 1 && <span className="inline-block w-48 border-b-8 border-sky-400 mx-4 text-sky-600 animate-pulse bg-white p-2 rounded-t-2xl shadow-sm">?</span>}</React.Fragment>
-                  ))}
-                </p>
-              </div>
-              <div className="flex flex-wrap justify-center gap-6">
-                {activeFillingData[fillingIndex]?.options.map((opt, i) => (
-                  <button key={i} disabled={!!feedback} onClick={() => handleFillingAnswer(opt)} className="px-12 py-6 bg-white border-b-8 border-sky-200 hover:border-sky-500 hover:bg-sky-50 rounded-[2rem] font-black text-3xl transition-all hover:scale-110 shadow-xl text-sky-700 active:translate-y-1 active:border-b-0">{opt}</button>
-                ))}
-              </div>
-          </div>
-        )}
-
-        {gameState === 'listening' && (
-          <div className="w-full space-y-8 z-10 text-center max-w-2xl mt-12">
-            <div className="flex flex-col items-center gap-4">
-              <span className="bg-indigo-500 text-white px-8 py-2 rounded-full text-sm font-black uppercase tracking-widest shadow-md">Učíme se: Sloka {currentStanza + 1} / {activePoem.length}</span>
-              <div className="bg-white p-10 rounded-[3rem] shadow-2xl border-4 border-indigo-100 w-full">
-                {activePoem[currentStanza].lines.map((line, i) => (<p key={i} className="text-3xl font-black text-indigo-900 mb-2">{line}</p>))}
-              </div>
-            </div>
-            <div className="flex flex-col items-center gap-6 pt-6">
-              <button 
-                onClick={() => playStanza(activePoem[currentStanza].lines)} 
-                className={`flex items-center justify-center gap-3 px-12 py-6 rounded-[2.5rem] font-black text-2xl shadow-xl border-b-8 transition-all min-w-[320px] ${isSpeaking ? 'bg-emerald-400 text-white border-emerald-600 scale-105' : 'bg-amber-400 text-white border-amber-600 hover:scale-105 active:translate-y-1 active:border-b-0'}`}
-              >
-                <Volume2 size={40} /> {isSpeaking ? 'PŘEHRÁVÁM...' : 'POSLECHNI SI'}
-              </button>
-
-              <div className="flex gap-4 w-full">
-                {currentStanza > 0 && (
-                  <button 
-                    onClick={() => { setCurrentStanza(s => s - 1); stopSpeaking(); }} 
-                    className="flex-1 py-4 bg-slate-200 text-slate-600 rounded-[2rem] font-black text-xl shadow-md border-b-4 border-slate-300 hover:bg-slate-300 active:translate-y-1 active:border-b-0 uppercase"
-                  >
-                    Předchozí
-                  </button>
-                )}
-                <button 
-                  onClick={() => {
-                    if (currentStanza < activePoem.length - 1) {
-                      setCurrentStanza(s => s + 1);
-                      stopSpeaking();
-                    } else {
-                      finishGame();
-                    }
-                  }} 
-                  className="flex-[2] py-4 bg-indigo-500 text-white rounded-[2rem] font-black text-xl shadow-md border-b-4 border-indigo-700 hover:bg-indigo-600 active:translate-y-1 active:border-b-0 uppercase"
-                >
-                  {currentStanza < activePoem.length - 1 ? 'Další sloka' : 'Mám naučeno!'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {gameState === 'result' && (
-          <div className="text-center space-y-8 py-4 animate-in fade-in zoom-in duration-700 z-10 w-full max-w-2xl">
-            <div className="relative inline-block">
-               <div className="absolute inset-0 animate-ping bg-yellow-400 rounded-full opacity-20"></div>
-               <div className="relative bg-gradient-to-br from-yellow-400 to-amber-500 p-10 rounded-full shadow-2xl mb-4 border-8 border-white"><Trophy className="text-white w-24 h-24" /></div>
-            </div>
-            
-            <div className="space-y-2">
-              <h2 className="text-6xl font-black text-emerald-600 drop-shadow-lg tracking-tight uppercase">Výborně!</h2>
-              <div className="flex justify-center gap-2">
-                {[1, 2, 3].map(i => (
-                  <Star 
-                    key={i} 
-                    size={48} 
-                    className={i <= getStarRating() ? "fill-yellow-400 text-yellow-400 animate-bounce" : "text-slate-200"}
-                    style={{ animationDelay: `${i * 150}ms` }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 bg-sky-50 p-8 rounded-[3rem] border-4 border-white shadow-inner">
-              <div className="flex flex-col">
-                <span className="text-sky-500 text-[10px] font-black uppercase mb-1 tracking-widest">Body</span>
-                <span className="text-5xl font-black text-sky-700">{score}</span>
-              </div>
-              <div className="flex flex-col border-y sm:border-y-0 sm:border-x border-sky-100 py-4 sm:py-0">
-                <span className="text-sky-500 text-[10px] font-black uppercase mb-1 tracking-widest italic flex items-center justify-center gap-1">
-                  <AlertCircle size={12} /> Počet oprav
-                </span>
-                <span className={`text-5xl font-black ${errorCount === 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                  {errorCount}
-                </span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-sky-500 text-[10px] font-black uppercase mb-1 tracking-widest">Čas</span>
-                <span className="text-5xl font-black text-sky-700">{formatTime(time)}</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
-                <button onClick={startGame} className="px-12 py-5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-[2rem] font-black text-2xl shadow-xl border-b-8 border-emerald-700 active:translate-y-1 active:border-b-0 uppercase">Zkusit znovu</button>
-                <button onClick={goHome} className="px-12 py-5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-[2rem] font-black text-2xl shadow-xl border-b-8 border-slate-400 active:translate-y-1 active:border-b-0 uppercase">Menu</button>
-            </div>
-          </div>
-        )}
-
-        {feedback && (
-          <div className="absolute inset-0 z-[200] flex items-center justify-center p-4">
-            {!feedback.isLast ? (
-               <div className={`
-                ${feedback.type === 'success' ? 'bg-emerald-500' : 'bg-rose-500'} 
-                text-white px-12 py-8 rounded-[3rem] shadow-2xl flex items-center gap-4
-                animate-in zoom-in slide-in-from-top-10 duration-200 border-b-[8px]
-                ${feedback.type === 'success' ? 'border-emerald-700' : 'border-rose-700'}
-              `}>
-                {feedback.type === 'success' ? <Star size={40} className="fill-current animate-bounce" /> : <XCircle size={40} />}
-                <span className="text-3xl font-black uppercase">{feedback.text}</span>
-              </div>
-            ) : (
-              <div className="fixed inset-0 flex items-center justify-center p-4 bg-white/60 backdrop-blur-md z-[300]">
-                <div className="w-full max-w-md bg-emerald-500 text-white p-10 rounded-[3.5rem] shadow-2xl flex flex-col items-center gap-8 animate-in zoom-in duration-300 border-b-[16px] border-emerald-700">
-                  <div className="bg-white/20 p-6 rounded-full"><Sparkles size={80} className="animate-bounce" /></div>
-                  <div className="text-center"><h3 className="text-4xl font-black mb-2 uppercase tracking-tight leading-tight">{feedback.text}</h3></div>
-                  <div className="flex flex-col w-full gap-3">
-                    <button onClick={() => feedback.action()} className="w-full py-5 bg-white text-emerald-700 rounded-3xl font-black text-2xl shadow-lg border-b-8 border-slate-200 active:translate-y-1 active:border-b-0 flex items-center justify-center gap-2 uppercase tracking-wide">
-                      Ukaž výsledky <ArrowRight size={28} />
-                    </button>
-                    <div className="flex gap-3">
-                      <button onClick={startGame} className="flex-1 py-4 bg-black/10 text-white rounded-3xl font-bold text-lg border-b-4 border-black/20 uppercase">Restart</button>
-                      <button onClick={goHome} className="flex-1 py-4 bg-black/10 text-white rounded-3xl font-bold text-lg border-b-4 border-black/20 uppercase">Menu</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </main>
-      
-      <footer className="mt-8 text-emerald-800/40 font-black text-sm uppercase tracking-widest flex items-center gap-4 bg-white/30 px-8 py-3 rounded-full backdrop-blur-sm shadow-sm"><Bird size={16} /> František Halas: Jarní škola hrou</footer>
-      
-      <style dangerouslySetInnerHTML={{ __html: `
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jarní básnička - Škola hrou</title>
+    <!-- React a Babel pro běh v prohlížeči -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Tailwind CSS pro styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide ikony -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide-react@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+        body { font-family: 'Nunito', sans-serif; }
         @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-5px); }
-          75% { transform: translateX(5px); }
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
         }
         .animate-spin-slow { animation: spin-slow 8s linear infinite; }
         .animate-shake { animation: shake 0.2s ease-in-out infinite; }
         .custom-scrollbar::-webkit-scrollbar { width: 8px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-      `}} />
-    </div>
-  );
-};
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-export default App;
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+        const { 
+            Trophy, Timer, Play, RefreshCw, Star, Flower2, Bird, Sun, Home, 
+            Move, Settings, ArrowLeft, Sparkles, Volume2, Check, XCircle, 
+            ArrowRight, Headphones, Loader2, AlertCircle 
+        } = LucideReact;
+
+        const POEM = [
+            { id: 1, lines: ["Vytáhnout trávu z hlíny", "a na zeleno natřít.", "Načernit pěkně stíny", "a všechno živé sbratřit."] },
+            { id: 2, lines: ["Všem hadům svléci kůži,", "načesat řádně louky,", "spočítat lístky růží", "a pruty leštit, brouky."] },
+            { id: 3, lines: ["Nachystat noty ptáčkům,", "obléci nahé stromy,", "vysmát se poškoláčkům,", "pozlatit střechy, domy."] },
+            { id: 4, lines: ["Rozmíchat v lese barvy", "a kdeco zrána zrosit,", "probudit v zemi larvy", "a teplo do děr nosit."] },
+            { id: 5, lines: ["Včeličkám květy sladit", "a děcka nutit vstávat", "a kožich kočkám hladit", "a peckám jádra dávat."] }
+        ];
+
+        const FILLING_VARIANTS = [
+            [{ text: "Vytáhnout _____ z hlíny", answer: "trávu", options: ["trávu", "kytku", "žížalu"] }, { text: "Vytáhnout trávu z _____", answer: "hlíny", options: ["vody", "hlíny", "písku"] }],
+            [{ text: "a na _____ natřít.", answer: "zeleno", options: ["modro", "zeleno", "žluto"] }, { text: "a na zeleno _____.", answer: "natřít", options: ["natřít", "posypat", "umyć"] }],
+            [{ text: "Načernit pěkně _____", answer: "stíny", options: ["stíny", "mraky", "stromy"] }, { text: "_____ pěkně stíny", answer: "Načernit", options: ["Načernit", "Vybělit", "Schovat"] }],
+            [{ text: "a všechno živé _____.", answer: "sbratřit", options: ["sbratřit", "vystrašit", "nakrmit"] }, { text: "a všechno _____ sbratřit.", answer: "živé", options: ["jarní", "živé", "lesní"] }],
+            [{ text: "Všem _____ svléci kůži,", answer: "hadům", options: ["hadům", "mlokům", "žábám"] }, { text: "Všem hadům svléci _____,", answer: "kůži", options: ["kůži", "kožich", "šaty"] }],
+            [{ text: "načesat řádně _____,", answer: "louky", options: ["vlasy", "louky", "pole"] }, { text: "_____ řádně louky,", answer: "načesat", options: ["pokosit", "načesat", "zalít"] }],
+            [{ text: "spočítat _____ růží", answer: "lístky", options: ["trny", "květy", "lístky"] }, { text: "spočítat lístky _____", answer: "růží", options: ["růží", "sedmikrásek", "pampelišek"] }],
+            [{ text: "a _____ leštit, brouky.", answer: "pruty", options: ["pruty", "boty", "zrcadla"] }, { text: "a pruty leštit, _____.", answer: "brouky", options: ["kluky", "brouky", "mravence"] }],
+            [{ text: "Nachystat _____ ptáčkům,", answer: "noty", options: ["zrnní", "noty", "hnízda"] }, { text: "Nachystat noty _____,", answer: "ptáčkům", options: ["ptáčkům", "včelkám", "dětem"] }],
+            [{ text: "obléci _____ stromy,", answer: "nahé", options: ["staré", "nahé", "smutné"] }, { text: "obléci nahé _____,", answer: "stromy", options: ["stromy", "keře", "květy"] }],
+            [{ text: "vysmát se _____,", answer: "poškoláčkům", options: ["loudalům", "poškoláčkům", "pěnkavám"] }, { text: "_____ se poškoláčkům,", answer: "vysmát", options: ["vysmát", "vyhnout", "poklonit"] }],
+            [{ text: "pozlatit _____, domy.", answer: "střechy", options: ["okna", "ploty", "střechy"] }, { text: "pozlatit střechy, _____.", answer: "domy", options: ["domy", "dvory", "hrady"] }],
+            [{ text: "Rozmíchat v _____ barvy", answer: "lese", options: ["blátě", "lese", "poli"] }, { text: "Rozmíchat v lese _____", answer: "barvy", options: ["barvy", "listy", "větve"] }],
+            [{ text: "a kdeco zrána _____.", answer: "zrosit", options: ["zrosit", "usušit", "spálit"] }, { text: "a kdeco _____ zrosit,", answer: "zrána", options: ["zrána", "v noci", "v lese"] }],
+            [{ text: "probudit v zemi _____", answer: "larvy", options: ["krtky", "larvy", "myšky"] }, { text: "probudit v _____ larvy", answer: "zemi", options: ["trávě", "zemi", "hlíně"] }],
+            [{ text: "a _____ do děr nosit.", answer: "teplo", options: ["vodu", "teplo", "světlo"] }, { text: "a teplo do _____ nosit.", answer: "děr", options: ["děr", "budek", "hnízd"] }],
+            [{ text: "Včeličkám květy _____", answer: "sladit", options: ["zalít", "sladit", "trhat"] }, { text: "_____ květy sladit", answer: "Včeličkám", options: ["Včeličkám", "Motýlům", "Dětem"] }],
+            [{ text: "a děcka nutit _____", answer: "vstávat", options: ["vstávat", "zpívat", "běhat"] }, { text: "a _____ nutit vstávat", answer: "děcka", options: ["včelky", "děcka", "kočky"] }],
+            [{ text: "a kožich _____ hladit", answer: "kočkám", options: ["psům", "kočkám", "králíkům"] }, { text: "a _____ kočkám hladit", answer: "kožich", options: ["kožich", "ocásek", "uši"] }],
+            [{ text: "a peckám _____ dávat.", answer: "jádra", options: ["vodu", "jádra", "chuť"] }, { text: "a _____ jádra dávat.", answer: "peckám", options: ["peckám", "květům", "stromům"] }]
+        ];
+
+        function shuffleArray(array) {
+            const newArr = [...array];
+            for (let i = newArr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+            }
+            return newArr;
+        }
+
+        const App = () => {
+            const [gameState, setGameState] = useState('menu'); 
+            const [selectedGameType, setSelectedGameType] = useState(null);
+            const [stanzaCount, setStanzaCount] = useState(5);
+            const [score, setScore] = useState(0);
+            const [errorCount, setErrorCount] = useState(0);
+            const [time, setTime] = useState(0);
+            const [timerActive, setTimerActive] = useState(false);
+            const [currentStanza, setCurrentStanza] = useState(0);
+            const [shuffledLines, setShuffledLines] = useState([]);
+            const [userOrderedLines, setUserOrderedLines] = useState([]);
+            const [fillingIndex, setFillingIndex] = useState(0);
+            const [activeFillingData, setActiveFillingData] = useState([]);
+            const [feedback, setFeedback] = useState(null); 
+
+            const [draggedItem, setDraggedItem] = useState(null);
+            const [dropSlots, setDropSlots] = useState([]);
+            const [showDragResults, setShowDragResults] = useState(false);
+            const [isSpeaking, setIsSpeaking] = useState(false);
+
+            const activePoem = useMemo(() => POEM.slice(0, stanzaCount), [stanzaCount]);
+
+            useEffect(() => {
+                let interval;
+                if (timerActive) {
+                    interval = setInterval(() => setTime(t => t + 1), 1000);
+                }
+                return () => clearInterval(interval);
+            }, [timerActive]);
+
+            const goHome = () => {
+                setGameState('menu');
+                setTimerActive(false);
+                setScore(0);
+                setErrorCount(0);
+                setTime(0);
+                setFeedback(null);
+                stopSpeaking();
+            };
+
+            const startSetup = (type) => {
+                setSelectedGameType(type);
+                setGameState('setup');
+                setFeedback(null);
+            };
+
+            const startGame = () => {
+                setScore(0);
+                setErrorCount(0);
+                setTime(0);
+                setTimerActive(true);
+                setCurrentStanza(0);
+                setFeedback(null);
+                
+                if (selectedGameType === 'sorting') {
+                    setGameState('sorting');
+                    prepareSortingStanza(0);
+                } else if (selectedGameType === 'filling') {
+                    setGameState('filling');
+                    setFillingIndex(0);
+                    const selectedTasks = FILLING_VARIANTS.slice(0, stanzaCount * 4).map(variants => variants[Math.floor(Math.random() * 2)]);
+                    setActiveFillingData(selectedTasks);
+                } else if (selectedGameType === 'dragdrop') {
+                    setGameState('dragdrop');
+                    setShowDragResults(false);
+                    prepareDragDropAll();
+                } else if (selectedGameType === 'listening') {
+                    setGameState('listening');
+                    setCurrentStanza(0);
+                }
+            };
+
+            const prepareSortingStanza = (index) => {
+                const lines = [...activePoem[index].lines];
+                setShuffledLines(shuffleArray(lines));
+                setUserOrderedLines([]);
+            };
+
+            const prepareDragDropAll = () => {
+                const allLines = activePoem.flatMap(s => s.lines);
+                setShuffledLines(shuffleArray(allLines));
+                setDropSlots(new Array(allLines.length).fill(null));
+            };
+
+            const handleLineClick = (line) => {
+                if (userOrderedLines.includes(line)) return;
+                const newOrder = [...userOrderedLines, line];
+                setUserOrderedLines(newOrder);
+
+                if (newOrder.length === 4) {
+                    const isCorrect = newOrder.every((l, i) => l === activePoem[currentStanza].lines[i]);
+                    const isLast = currentStanza === activePoem.length - 1;
+
+                    if (isCorrect) {
+                        setScore(s => s + 20);
+                        if (isLast) {
+                            setFeedback({ type: 'success', text: 'Paráda! Jsi šikula.', isLast: true, action: finishGame });
+                        } else {
+                            setFeedback({ type: 'success', text: 'Skvěle!' });
+                            setTimeout(() => {
+                                const next = currentStanza + 1;
+                                setCurrentStanza(next);
+                                prepareSortingStanza(next);
+                                setFeedback(null);
+                            }, 1200);
+                        }
+                    } else {
+                        setErrorCount(e => e + 1);
+                        setFeedback({ type: 'error', text: 'Zkus to znovu!' });
+                        setTimeout(() => {
+                            setUserOrderedLines([]);
+                            setFeedback(null);
+                        }, 1200);
+                    }
+                }
+            };
+
+            const handleFillingAnswer = (option) => {
+                const correct = activeFillingData[fillingIndex].answer;
+                if (option === correct) {
+                    setScore(s => s + 10);
+                    if (fillingIndex === activeFillingData.length - 1) {
+                        setFeedback({ type: 'success', text: 'Výborně, máš to celé!', isLast: true, action: finishGame });
+                    } else {
+                        setFeedback({ type: 'success', text: 'Trefa!' });
+                        setTimeout(() => {
+                            setFillingIndex(f => f + 1);
+                            setFeedback(null);
+                        }, 1000);
+                    }
+                } else {
+                    setErrorCount(e => e + 1);
+                    setFeedback({ type: 'error', text: 'Zkus to znovu.' });
+                    setTimeout(() => setFeedback(null), 1000);
+                }
+            };
+
+            const onDragStart = (line, fromSlotIndex = null) => {
+                setDraggedItem({ line, fromSlotIndex });
+                setShowDragResults(false); 
+            };
+
+            const onDropToSlot = (slotIndex) => {
+                if (!draggedItem) return;
+                const newSlots = [...dropSlots];
+                if (draggedItem.fromSlotIndex !== null) newSlots[draggedItem.fromSlotIndex] = null;
+                newSlots[slotIndex] = draggedItem.line;
+                setDropSlots(newSlots);
+                setDraggedItem(null);
+                setShowDragResults(false);
+            };
+
+            const removeFromSlot = (slotIndex) => {
+                const newSlots = [...dropSlots];
+                newSlots[slotIndex] = null;
+                setDropSlots(newSlots);
+                setShowDragResults(false);
+            };
+
+            const checkDragDropResults = () => {
+                const allCorrectLines = activePoem.flatMap(s => s.lines);
+                const isCorrect = dropSlots.every((l, i) => l === allCorrectLines[i]);
+                if (isCorrect) {
+                    setScore(s => s + (stanzaCount * 25));
+                    setFeedback({ type: 'success', text: 'Neuvěřitelné! Celou básničku jsi složil!', isLast: true, action: finishGame });
+                } else {
+                    setErrorCount(e => e + 1);
+                    setShowDragResults(true);
+                    setFeedback({ type: 'error', text: 'Některé řádky jsou špatně.' });
